@@ -1,0 +1,20 @@
+﻿* Move to generic foreign keys
+	- to allow to schedule either a conduit_set or a single conduit
+	- Allow for multiple types of replications(diff, full, mysql-specific)(from different models) into a conduit
+		in a cleaner way
+* Documentation
+* How to determine primary key in: ORACLE, SQLite, PostgreSQL
+* Test if TNSNAMES.ORA support works
+* Execution order field for Conduits inside a conduit set
+* If a schedule executes too fast; t_total < REPLICATE_CHECKSCHEDULES_FREQUENCY, it gets executed twice
+* Transaction support w/ optional rollback in case of error
+* View log results in conduit_admin
+* Add range support to schedules
+* Add ability to insert new values for new fields for each conduit
+* Implement deletes
+* Implement updates
+* Revise model field null & blank settings
+
+==========
+* View to trigger and debug conduits  -- DONE
+* Make nifty front end (Low priority) --  Using grappelli

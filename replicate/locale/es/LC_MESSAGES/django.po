@@ -1,0 +1,522 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-10-30 00:23-0400\n"
+"PO-Revision-Date: 2009-10-30 00:33\n"
+"Last-Translator: <admin@admin.com>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Translated-Using: django-rosetta 0.4.7\n"
+
+#: admin.py:18
+msgid "copy"
+msgstr "copia"
+
+#: admin.py:77
+msgid "1 conduit set was"
+msgstr "1 juego de conductos fue"
+
+#: admin.py:79
+#, python-format
+msgid "%s conduit sets were"
+msgstr "%s juegos de conductos fueron"
+
+#: admin.py:80 admin.py:109
+#, python-format
+msgid "%s manually executed.  Check log file for results."
+msgstr "%s manualmente executados.  Verifique la bitacora para resultados."
+
+#: admin.py:81
+msgid "Manually execute conduit set"
+msgstr "Ejecutar manualmente juego de conductos"
+
+#: admin.py:106
+msgid "1 schedule was"
+msgstr "1 programa fue"
+
+#: admin.py:108
+#, python-format
+msgid "%s schedules were"
+msgstr "%s programas fueron"
+
+#: admin.py:110
+msgid "Manually execute schedule"
+msgstr "Executar horario manualmente"
+
+#: admin.py:119 admin.py:132 admin.py:191
+msgid "1 conduit was"
+msgstr "1 conducto fue"
+
+#: admin.py:121 admin.py:134 admin.py:193
+#, python-format
+msgid "%s conduits were"
+msgstr "%s conductos fueron"
+
+#: admin.py:122
+#, python-format
+msgid "%s enabled."
+msgstr "%s activado."
+
+#: admin.py:123
+msgid "Enable schedule"
+msgstr "Activar horario"
+
+#: admin.py:135
+#, python-format
+msgid "%s disabled."
+msgstr "%s desactivado."
+
+#: admin.py:136
+msgid "Disable schedule"
+msgstr "Desactivar horario"
+
+#: admin.py:158
+msgid "Error handling"
+msgstr "Manejo de errores"
+
+#: admin.py:162
+msgid "Performance"
+msgstr "Desempe¤o"
+
+#: admin.py:166
+msgid "Timeouts"
+msgstr "Limite de tiempos"
+
+#: admin.py:185
+msgid "Manually execute conduit"
+msgstr "Ejecutar manualmente conducto"
+
+#: admin.py:194
+#, python-format
+msgid "%s copied."
+msgstr "%s copiado(s)."
+
+#: admin.py:196
+msgid "Copy the selected object"
+msgstr "Copiar el objeto seleccionado"
+
+#: models.py:8 models.py:32 models.py:49
+msgid "name"
+msgstr "nombre"
+
+#: models.py:8
+msgid "A name to identify this host."
+msgstr "Un nombre para identificar esta maquina."
+
+#: models.py:9
+msgid "IP address"
+msgstr "Direccion IP"
+
+#: models.py:16 models.py:20
+msgid "host"
+msgstr "maquina"
+
+#: models.py:17
+msgid "hosts"
+msgstr "maquinas"
+
+#: models.py:31
+msgid "backend"
+msgstr "manejador"
+
+#: models.py:31
+msgid "Database driver to be used"
+msgstr "Manejador de bases de datos a ser usado"
+
+#: models.py:32
+msgid "Name of the database (or ORACLE database service name)"
+msgstr "Nombre de la base de datos (o nombre del servicio de ORACLE)"
+
+#: models.py:34
+msgid "options"
+msgstr "opciones"
+
+#: models.py:35
+msgid "username"
+msgstr "usuario"
+
+#: models.py:35
+msgid "The username that will be used to connect to this database"
+msgstr "El usuario que se utilizara para conectarse a la base de datos"
+
+#: models.py:36
+msgid "password"
+msgstr "contraseña"
+
+#: models.py:36
+msgid "Password of the user that will be used to connect to the database"
+msgstr "La contraseña del usuario que se utilizara para conectarse a la base de datos"
+
+#: models.py:37
+msgid "port"
+msgstr "puerto"
+
+#: models.py:37
+msgid "The port used to connect to the database, leave blank for default port number"
+msgstr "El puerto utilizado para conectarse a la base de datos, deje en blanco para el número de puerto por defecto"
+
+#: models.py:38
+msgid "timezone"
+msgstr "zona horaria"
+
+#: models.py:45
+msgid "database"
+msgstr "base de datos"
+
+#: models.py:46
+msgid "databases"
+msgstr "bases de datos"
+
+#: models.py:51
+msgid "Incremental/slave append only (no updates or deletes on slave)"
+msgstr "Incremental / esclavo anexar solamente (sin cambios o eliminaciones en esclavo)"
+
+#: models.py:52
+msgid "Empty/append alias Full, Snapshot  *N/A*"
+msgstr "Vaciar / agregar todos / copia completa  * N / D *"
+
+#: models.py:55
+msgid "type"
+msgstr "tipo"
+
+#: models.py:56
+msgid "Database where records will be fetch."
+msgstr "Base de datos de donde se extraeran los records."
+
+#: models.py:56
+msgid "master database"
+msgstr "base de datos maestra"
+
+#: models.py:57
+msgid "Database that will receive (or update, or delete) records."
+msgstr "Base de datos que va a recibir (o actualizar o eliminar) los registros."
+
+#: models.py:57
+msgid "slave database"
+msgstr "base de datos esclava"
+
+#: models.py:58
+msgid "master table"
+msgstr "tabla maestra"
+
+#: models.py:59
+msgid "Limits the amount of master keys compared for replication.  Also useful in fan-out style replication."
+msgstr "Limita la cantidad de llaves maestras comparadas para la replicación. También es útil en el estilos de replicación: de uno a muchos."
+
+#: models.py:59
+msgid "master subset"
+msgstr "subconjunto maestro"
+
+#: models.py:60
+msgid "slave table"
+msgstr "tabla esclava"
+
+#: models.py:62
+msgid "Limits the amount of slave keys compared for replication.  Also useful in fan-in style replication."
+msgstr "Limita la cantidad de llaves esclavas comparas para la replicación. También es útil en estilo de replicación: de muchos a uno."
+
+#: models.py:62
+msgid "slave subset"
+msgstr "subconjunto esclavo"
+
+#: models.py:64
+msgid "Master"
+msgstr "Maestra"
+
+#: models.py:65
+msgid "Slave"
+msgstr "Esclava"
+
+#: models.py:67
+msgid "primary key source"
+msgstr "fuente de la llave primaria"
+
+#: models.py:67
+msgid "Determines which database (master or slave) is going to be queried to determine the primary key."
+msgstr "Determina cual de las bases de datos (maestro o esclavo) va a ser consultada para determinar la llave principal."
+
+#: models.py:68
+msgid "Only works for MySQL databases so far."
+msgstr "Sólo funciona con bases de datos MySQL por el momento."
+
+#: models.py:68
+msgid "detect primary key"
+msgstr "detectar llave primaria"
+
+#: models.py:69
+msgid "Comma separated list of fields that compose a primary key."
+msgstr "Lista de campos separados por coma, que componen la llave primaria."
+
+#: models.py:69
+msgid "key fields"
+msgstr "cambos que componen la llave"
+
+#: models.py:70
+msgid "Size of keys block to fetch from master when comparing master/slave difference (optimization value affected by: network speed/latency, computer memory ammount)."
+msgstr "Tamaño de bloque de llaves maestras a buscar a la hora de comparar con la diferencia maestro / esclavo (valor de la optimización es afectado por: la velocidad de red o la latencia, la cantidad de memoria del ordenador)."
+
+#: models.py:70
+msgid "master key fetch buffer size"
+msgstr "tamaño de bloque de llaves a buscar"
+
+#: models.py:71
+msgid "Amount of records to append per conduit execution (this value is independant of [master_key_batchsize] value."
+msgstr "Cantidad de filas a agregar por ejecución de conducto (este valor es independiente del valor de  [tamaño de bloque de llaves a buscar]."
+
+#: models.py:71
+msgid "conduit batchsize"
+msgstr "tamaño de lote del conducto"
+
+#: models.py:72
+msgid "Comma separated list of fields that will be replicated, if not specified all fields will be used."
+msgstr "Lista separada por comas de los campos que se extraeran para la replicación, si no se especifica todos los campos se utilizarán."
+
+#: models.py:72
+msgid "field to fetch"
+msgstr "campo a extraer"
+
+#: models.py:73
+msgid "Don't actually modify any data only log messages"
+msgstr "No modificar ningun dato solo se actualiza la bitacora"
+
+#: models.py:73
+msgid "dry run"
+msgstr "corrida de prueba"
+
+#: models.py:74
+msgid "Ignore situations where a single slave append query returns an error (typical of incorrect primary key fields)"
+msgstr "Ignorar situaciones en que un solo una cosulta de anexar del esclavo devuelve un error (típico de una lista incorrecta de campos de llave principal)"
+
+#: models.py:74
+msgid "ignore slave modify error"
+msgstr "ignorar error de modificacion de esclavo"
+
+#: models.py:75
+msgid "Abort conduit after this many slave warnings.  A value of zero disables this function."
+msgstr ""
+
+#: models.py:75
+msgid "slave warnings abort threshold"
+msgstr "umbral de aborto de advertencias de esclavos"
+
+#: models.py:77
+msgid "Ignore situations where a single master pull query returns more than 1 or 0 rows (typical of incorrect primary key fields)"
+msgstr ""
+
+#: models.py:77
+msgid "ignore master pull errors"
+msgstr ""
+
+#: models.py:78
+msgid "Abort conduit after this many master warnings.  A value of zero disables this function."
+msgstr ""
+
+#: models.py:78
+msgid "master warnings abort threshold"
+msgstr "umbral de aborto de advertencias de maestro"
+
+#: models.py:80
+msgid "The maximum ammount of time that this conduit is allowed to execute before it gets stopped."
+msgstr "La cantidad máxima de tiempo que este conducto se permitirá ejecutar antes que sea detenido."
+
+#: models.py:80
+msgid "conduit timeout"
+msgstr "tiempo limite del conducto"
+
+#: models.py:81
+msgid "Timeout (in seconds) for simple database operations, such as: Establishing connections, discovering primary keys, etc."
+msgstr "Tiempo de espera (en segundos) para las operaciones de base de datos simples, tales como: Establecer conexiones, descubrir las llaves principales, etc"
+
+#: models.py:81
+msgid "minor operations timeout"
+msgstr "tiempo limite para operaciones menores"
+
+#: models.py:82
+msgid "Timeout (in seconds) for complex database operations, such as: Fetching primary keys, fetching rows, etc."
+msgstr "Tiempo de espera (en segundos) para las operaciones de bases de datos complejas, tales como: Extracción de las llaves principales, ir a buscar records, etc"
+
+#: models.py:82
+msgid "major operations timeout"
+msgstr "tiempo limite para operaciones mayores"
+
+#: models.py:109 models.py:168
+msgid "enabled"
+msgstr "activado"
+
+#: models.py:114 models.py:158
+msgid "conduit sets"
+msgstr "sets de conductos"
+
+#: models.py:118 models.py:208
+msgid "schedules"
+msgstr "horarios"
+
+#: models.py:123
+msgid "conduit"
+msgstr "conducto"
+
+#: models.py:124 models.py:147 models.py:162
+msgid "conduits"
+msgstr "conductos"
+
+#: models.py:131
+msgid "timestamp"
+msgstr "estampa de tiempo"
+
+#: models.py:132
+msgid "module"
+msgstr "modulo"
+
+#: models.py:133
+msgid "severity"
+msgstr "severidad"
+
+#: models.py:134
+msgid "message"
+msgstr "mensaje"
+
+#: models.py:141
+msgid "log"
+msgstr "bitacora"
+
+#: models.py:142
+msgid "logs"
+msgstr "bitacoras"
+
+#: models.py:145
+msgid "set name"
+msgstr "nombre del set"
+
+#: models.py:146
+msgid "If true, allows the conduits contained within to execute at the same time else sequencially."
+msgstr ""
+
+#: models.py:146
+msgid "concurrent"
+msgstr "concurrente"
+
+#: models.py:157 models.py:167
+msgid "conduit set"
+msgstr "set de conductos"
+
+#: models.py:167
+msgid "Select which conduit set to schedule."
+msgstr "Seleccione el juego de conductos a programar."
+
+#: models.py:169
+msgid "minute"
+msgstr "minuto"
+
+#: models.py:169
+msgid "At which minute(s) the schedule should run.  For multiple entries with a comma."
+msgstr ""
+
+#: models.py:170
+msgid "hours"
+msgstr "horas"
+
+#: models.py:170
+msgid "At which hour(s) the schedule should run.  For multiple entries with a comma."
+msgstr ""
+
+#: models.py:171
+msgid "day of the month"
+msgstr "día del mes"
+
+#: models.py:171
+msgid "At which day(s) of the month the schedule should run.  For multiple entries with a comma."
+msgstr ""
+
+#: models.py:172 models.py:203
+msgid "month"
+msgstr "mes"
+
+#: models.py:172
+msgid "At which month(s) the schedule should run.  For multiple entries with a comma."
+msgstr ""
+
+#: models.py:173
+msgid "day of the week"
+msgstr "día de la semana"
+
+#: models.py:173
+msgid "At which day(s) of the week the schedule should run.  For multiple entries with a comma."
+msgstr ""
+
+#: models.py:174
+msgid "last ran"
+msgstr "ultima corrida"
+
+#: models.py:175
+msgid "executing?"
+msgstr "¿Ejecutando?"
+
+#: models.py:188
+msgid "January"
+msgstr "Enero"
+
+#: models.py:189
+msgid "Febraury"
+msgstr "Febrero"
+
+#: models.py:190
+msgid "March"
+msgstr "Marzo"
+
+#: models.py:191
+msgid "April"
+msgstr "Abril"
+
+#: models.py:192
+msgid "May"
+msgstr "Mayo"
+
+#: models.py:193
+msgid "June"
+msgstr "Junio"
+
+#: models.py:194
+msgid "July"
+msgstr "Julio"
+
+#: models.py:195
+msgid "August"
+msgstr "Agosto"
+
+#: models.py:196
+msgid "September"
+msgstr "Septiembre"
+
+#: models.py:197
+msgid "October"
+msgstr "Octubre"
+
+#: models.py:198
+msgid "November"
+msgstr "Noviembre"
+
+#: models.py:199
+msgid "December"
+msgstr "Diciembre"
+
+#: models.py:200
+msgid "All"
+msgstr "Todos"
+
+#: models.py:207
+msgid "schedule"
+msgstr "programa"
+
+#~ msgid "%s enabled.  Check log file for results."
+#~ msgstr "%s activado."
+
+#~ msgid "%s disabled.  Check log file for results."
+#~ msgstr "%s desactivado."

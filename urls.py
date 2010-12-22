@@ -3,8 +3,8 @@ from django.conf.urls.defaults import *
 from django.contrib import admin
 from grappelli.sites import GrappelliSite
 
-import replicate
-replicate.begin()
+#import replicate
+#replicate.begin()
 
 admin.site = GrappelliSite()
 admin.autodiscover()

@@ -1,0 +1,22 @@
+<VirtualHost *:80>
+    ServerName django_replication
+
+#    WSGIDaemonProcess django_replication user=www-data group=www-data threads=10 python-path=/usr/share/django_replication/lib/python2.6/site-packages
+#    WSGIProcessGroup django_replication
+    WSGIScriptAlias / /usr/share/django_replication/django_replication/wsgi/dispatch.wsgi
+    
+#    <Directory /usr/share/django_replication/django_replication>
+#        Order deny,allow
+#        Allow from all
+#    </Directory>
+    ErrorLog /var/log/apache2/error.log
+    LogLevel warn
+    CustomLog /var/log/apache2/access.log combined
+
+    Alias /site_media "/usr/share/django_replication/django_replication/site_media/"
+    <Location "/site_media">
+        SetHandler None
+    </Location>
+</VirtualHost>
+
+

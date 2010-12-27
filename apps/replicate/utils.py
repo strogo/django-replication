@@ -12,7 +12,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response, get_object_or_404
 from django.utils.importlib import import_module
 
-from timelimited import *
+from timelimited import TimeLimited, TimeLimitExpired
 from models import Conduit, Log
 
 class DBHandler(logging.Handler):
@@ -93,9 +93,9 @@ def execute_conduit(request, conduit_id):
         conduit_obj = Conduit.objects.get(pk = int(conduit_id))
         logger_ec.info(u'Conduit: %s; Manually executing conduit...' % conduit_obj)
 
-        c_p = Process(target=_execute_timed_conduit, args=(conduit_obj,))
+        c_p = Process(target=execute_timed_conduit, args=(conduit_obj,))
         c_p.start()	
-#		_execute_timed_conduit(conduit_obj)
+#		execute_timed_conduit(conduit_obj)
         
     #	logger_ec.info('Conduit: %s; Finished manual execution.' % conduit_obj)
         
@@ -120,7 +120,7 @@ def ResultIter(cursor, arraysize=1000, timeout = 0):
         #print "KeyboardInterrupt @ ResultIter"
         return	
 
-def _run_timed_query(cursor, log_msg, query_string, timeout=10, *query_args):
+def run_timed_query(cursor, log_msg, query_string, timeout=10, *query_args):
     """Run a timed query, do error handling and logging"""
     try:
         result = TimeLimited(cursor.execute, timeout)(query_string, *query_args)
@@ -130,30 +130,30 @@ def _run_timed_query(cursor, log_msg, query_string, timeout=10, *query_args):
         logger_ec.error(u'%s; Timeout error.' % log_msg)
         raise
     except KeyboardInterrupt:
-        #print "KeyboardInterrupt @ _run_timed_query"
+        #print "KeyboardInterrupt @ run_timed_query"
         return
     except:
         (exc_type, exc_info, tb) = sys.exc_info()
         logger_ec.error(u'%s; %s.' % (log_msg, traceback.format_exception(exc_type, exc_info, None)[0]))
         raise
         
-def _execute_timed_conduit(conduit_obj):
+def execute_timed_conduit(conduit_obj):
     django_connection.close() 
 
     try:
-        return TimeLimited(_execute_conduit, conduit_obj.timeout)(conduit_obj)
+        return TimeLimited(execute_conduit, conduit_obj.timeout)(conduit_obj)
     except TimeLimitExpired:
         logger_ec.error(u'Conduit: %s; Conduit timeout error.' % conduit_obj)
         return sys.exc_info()
     except KeyboardInterrupt:
-        #print "KeyboardInterrupt @ _execute_timed_conduit"
+        #print "KeyboardInterrupt @ execute_timed_conduit"
         return	
     except:
         (exc_type, exc_info, tb) = sys.exc_info()
         logger_ec.error(u'Conduit: %s; Error; %s'  % (conduit_obj, traceback.format_exception(exc_type, exc_info, None)[0]))
         return traceback.format_exception(exc_type, exc_info, None)
 
-def _execute_conduit(conduit):
+def execute_conduit(conduit):
     """Execute a single conduit"""
     # rowcount is quirky for ORACLE 9
     #[7] The rowcount attribute may be coded in a way that updates
@@ -256,7 +256,7 @@ def _execute_conduit(conduit):
             query =  "SHOW INDEX FROM %s WHERE Key_name = 'PRIMARY'" % auto_table
             error_msg = u'Conduit: %s; auto_db: %s; detecting_primary_key (mysql)' % (conduit, auto_db)
             try:
-                _run_timed_query(auto_cursor, error_msg, query, conduit.minor_timeout)
+                run_timed_query(auto_cursor, error_msg, query, conduit.minor_timeout)
             except:
                 slave_cursor.close()
                 master_cursor.close()
@@ -270,7 +270,7 @@ def _execute_conduit(conduit):
             error_msg = u'Conduit: %s; auto_db: %s; detecting_primary_key (sqlite3)' % (conduit, auto_db)
             #Untested
             try:
-                _run_timed_query(auto_cursor, error_msg, query, conduit.minor_timeout)
+                run_timed_query(auto_cursor, error_msg, query, conduit.minor_timeout)
             except:
                 slave_cursor.close()
                 master_cursor.close()
@@ -308,7 +308,7 @@ def _execute_conduit(conduit):
                 print "QUERY: %s" % query
                 error_msg = u'Conduit: %s; auto_db: %s; detecting_primary_key (oracle)' % (conduit, auto_db)
                 try:
-                    _run_timed_query(auto_cursor, error_msg,  query, conduit.minor_timeout)
+                    run_timed_query(auto_cursor, error_msg,  query, conduit.minor_timeout)
                 except:
                     slave_cursor.close()
                     master_cursor.close()
@@ -370,7 +370,7 @@ def _execute_conduit(conduit):
             logger_ec.error(u'Conduit: %s; Automatic database field description is not yet supported this database backend: %s.' % (conduit, auto_backend))
             return True
 
-        _run_timed_query(auto_cursor, u'Conduit: %s; auto_db: %s; fields_to_fetch' % (conduit, auto_db),  query, conduit.minor_timeout)
+        run_timed_query(auto_cursor, u'Conduit: %s; auto_db: %s; fields_to_fetch' % (conduit, auto_db),  query, conduit.minor_timeout)
     except:
         slave_cursor.close()
         master_cursor.close()
@@ -391,7 +391,7 @@ def _execute_conduit(conduit):
     logger_ec.debug(u'Conduit: %s; Starting fetching keys from slave....' % conduit)
 
     try:
-        _run_timed_query(slave_cursor, u'Conduit: %s; slave_db:%s; fetch_keys' % (conduit, conduit.slave_table), slave_query, conduit.major_timeout)
+        run_timed_query(slave_cursor, u'Conduit: %s; slave_db:%s; fetch_keys' % (conduit, conduit.slave_table), slave_query, conduit.major_timeout)
     except:
         slave_cursor.close()
         master_cursor.close()
@@ -409,7 +409,7 @@ def _execute_conduit(conduit):
     logger_ec.debug(u'Conduit: %s; Starting fetching keys from master....' % conduit)
 
     try:
-        _run_timed_query(master_cursor, u'Conduit: %s; master_db: %s; fetch_keys' % (conduit, conduit.master_db), master_query, conduit.major_timeout)
+        run_timed_query(master_cursor, u'Conduit: %s; master_db: %s; fetch_keys' % (conduit, conduit.master_db), master_query, conduit.major_timeout)
     except:
         slave_cursor.close()
         master_cursor.close()
@@ -501,11 +501,11 @@ def _execute_conduit(conduit):
     slave_connection.close()
     logger_ec.info(u'Conduit: %s; Finished.' % (conduit))
 
-def _execute_conduit_set(conduit_set):
+def execute_conduit_set(conduit_set):
     logger_es.info(u"Executing conduit_set: %s." % conduit_set)
     c_p_l = []
     for conduit in conduit_set.conduits.all():
-        c_p = Process(target=_execute_timed_conduit, args=(conduit,))
+        c_p = Process(target=execute_timed_conduit, args=(conduit,))
         c_p_l.append(c_p)
         c_p.start()
         #If conduit concurrency flag not set, wait for each conduit before starting next
@@ -517,7 +517,7 @@ def _execute_conduit_set(conduit_set):
 
     logger_es.info(u"Finished executing conduit_set: %s." % conduit_set)
     
-def _execute_schedule(schedule):
+def execute_schedule(schedule):
     """Execute a schedule, calling the associated conduit_set"""
     django_connection.close() 
     
@@ -526,7 +526,7 @@ def _execute_schedule(schedule):
     schedule.executing = True
     schedule.save()
 
-    _execute_conduit_set(schedule.conduit_set)
+    execute_conduit_set(schedule.conduit_set)
 
     logger_es.info(u"Schedule: %s; Finished." % schedule)
 

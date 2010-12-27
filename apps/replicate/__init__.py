@@ -1,20 +1,19 @@
 #http://code.activestate.com/recipes/496800/ - James Kassemi
+
 import thread
 import threading
 import datetime
-from multiprocessing import Process
-#import sys, os
+#from multiprocessing import Process
 
 from django.conf import settings
 from django.db import connection as django_connection
 
-from views import _execute_schedule
+from utils import execute_schedule
 from models import Schedule
 
 from debug import debug
 
 DEFAULT_REPLICATE_CHECKSCHEDULES_FREQUENCY = 35
-
 
 class Operation(threading._Timer):
     def __init__(self, *args, **kwargs):
@@ -71,7 +70,7 @@ def checkSchedules():
                         if ct.weekday() in atoi_list(schedule.day_of_week) or schedule.day_of_week == '*':
                             if ct.month in atoi_list(schedule.month) or schedule.month == '*':
                                 if ct.day in atoi_list(schedule.day_of_month) or schedule.day_of_month == '*':
-                                    sch_p = Process(target=_execute_schedule, args=(schedule,))
+                                    sch_p = Process(target=execute_schedule, args=(schedule,))
                                     sch_p_l.append(sch_p)
                                     sch_p.start()
                                 
@@ -82,7 +81,7 @@ try:
     host = socket.gethostname()
     port = getattr(settings, "REPLICATE_SAFETY_PORT", 21451)
     s.bind((host, port))
-    
+
     Schedule.objects.all().update(executing = False)
     timer = Manager()
     timer.add_operation(checkSchedules, getattr(settings, "REPLICATE_CHECKSCHEDULES_FREQUENCY", DEFAULT_REPLICATE_CHECKSCHEDULES_FREQUENCY))
@@ -103,3 +102,4 @@ except:
 
 #import replicate
 #replicate.begin()
+

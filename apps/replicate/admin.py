@@ -3,6 +3,7 @@ from django import forms
 from django.utils.translation import ugettext_lazy as _
 
 from replicate.models import Host, Database, Conduit, Conduit_Set, Schedule, Log
+from utils import execute_conduit, execute_schedule, execute_conduit_set
 
 #http://www.bromer.eu/2009/05/23/a-generic-copyclone-action-for-django-11/
 from django.db.models.fields import CharField
@@ -72,9 +73,8 @@ class Conduit_SetAdmin(admin.ModelAdmin):
     actions = ['execute']
 
     def execute(self, request, queryset):
-        from views import _execute_conduit_set
         for i in queryset:
-            _execute_conduit_set(i)
+            execute_conduit_set(i)
         
         if queryset.count() == 1:
             message_bit = _(u"1 conduit set was")
@@ -103,9 +103,8 @@ class ScheduleAdmin(admin.ModelAdmin):
     actions = ['execute', 'enable', 'disable']
 
     def execute(self, request, queryset):
-        from views import _execute_schedule
         for i in queryset:
-            _execute_schedule(i)
+            execute_schedule(i)
         
         if queryset.count() == 1:
             message_bit = _(u"1 schedule was")
@@ -115,7 +114,6 @@ class ScheduleAdmin(admin.ModelAdmin):
     execute.short_description = _(u"Manually execute schedule")	
 
     def enable(self, request, queryset):
-        from views import execute_conduit
         for i in queryset:
             i.enabled = True
             i.save()
@@ -128,7 +126,6 @@ class ScheduleAdmin(admin.ModelAdmin):
     enable.short_description = _(u"Enable schedule")
 
     def disable(self, request, queryset):
-        from views import execute_conduit
         for i in queryset:
             i.enabled = False
             i.save()
@@ -180,7 +177,6 @@ class ConduitAdmin(admin.ModelAdmin):
     actions = ['execute', 'clone']
 
     def execute(self, request, queryset):
-        from views import execute_conduit
         for i in queryset:
             execute_conduit(request, i.pk)
         
@@ -209,3 +205,4 @@ admin.site.register(Conduit, ConduitAdmin)
 admin.site.register(Conduit_Set, Conduit_SetAdmin)
 admin.site.register(Schedule, ScheduleAdmin)
 admin.site.register(Log, LogAdmin)
+

@@ -1,3 +1,3 @@
-from django.conf.urls.defaults import *
-
-urlpatterns = patterns('replicate.views')
+#from django.conf.urls.defaults import *
+#
+#urlpatterns = patterns('replicate.views')

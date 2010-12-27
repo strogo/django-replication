@@ -13,6 +13,9 @@ from models import Schedule
 
 from debug import debug
 
+DEFAULT_REPLICATE_CHECKSCHEDULES_FREQUENCY = 35
+
+
 class Operation(threading._Timer):
     def __init__(self, *args, **kwargs):
         threading._Timer.__init__(self, *args, **kwargs)
@@ -82,7 +85,7 @@ try:
     
     Schedule.objects.all().update(executing = False)
     timer = Manager()
-    timer.add_operation(checkSchedules, getattr(settings, "REPLICATE_CHECKSCHEDULES_FREQUENCY", 35))
+    timer.add_operation(checkSchedules, getattr(settings, "REPLICATE_CHECKSCHEDULES_FREQUENCY", DEFAULT_REPLICATE_CHECKSCHEDULES_FREQUENCY))
     debug("replicate.start-ok")
 except:
     debug("replicate.start-fail")

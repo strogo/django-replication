@@ -3,7 +3,7 @@ from django import forms
 from django.utils.translation import ugettext_lazy as _
 
 from replicate.models import Host, Database, Conduit, Conduit_Set, Schedule, Log
-from utils import execute_conduit, execute_schedule, execute_conduit_set
+from utils import execute_conduit_manually, execute_schedule, execute_conduit_set
 
 #http://www.bromer.eu/2009/05/23/a-generic-copyclone-action-for-django-11/
 from django.db.models.fields import CharField
@@ -178,7 +178,7 @@ class ConduitAdmin(admin.ModelAdmin):
 
     def execute(self, request, queryset):
         for i in queryset:
-            execute_conduit(request, i.pk)
+            execute_conduit_manually(i.pk)
         
         if queryset.count() == 1:
             message_bit = "1 conduit was"

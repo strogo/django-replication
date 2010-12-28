@@ -178,7 +178,7 @@ class ConduitAdmin(admin.ModelAdmin):
 
     def execute(self, request, queryset):
         for i in queryset:
-            execute_conduit_manually(i.pk)
+            execute_conduit_manually(i)
         
         if queryset.count() == 1:
             message_bit = "1 conduit was"

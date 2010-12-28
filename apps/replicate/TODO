@@ -1,4 +1,5 @@
-﻿* Move to generic foreign keys
+﻿* Implement Readonly admin fields using new django admin capabilities
+* Move to generic foreign keys
 	- to allow to schedule either a conduit_set or a single conduit
 	- Allow for multiple types of replications(diff, full, mysql-specific)(from different models) into a conduit
 		in a cleaner way

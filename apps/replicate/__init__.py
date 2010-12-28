@@ -1,10 +1,12 @@
 #http://code.activestate.com/recipes/496800/ - James Kassemi
 
+import socket
 import thread
 import threading
 import datetime
-#from multiprocessing import Process
+from multiprocessing import Process
 
+from django.db.utils import DatabaseError
 from django.conf import settings
 from django.db import connection as django_connection
 
@@ -14,6 +16,7 @@ from models import Schedule
 from debug import debug
 
 DEFAULT_REPLICATE_CHECKSCHEDULES_FREQUENCY = 35
+DEFAULT_REPLICATE_SAFETY_PORT = 21451
 
 class Operation(threading._Timer):
     def __init__(self, *args, **kwargs):
@@ -75,21 +78,23 @@ def checkSchedules():
                                     sch_p.start()
                                 
 debug("replicate.init")
+
 try:
-    import socket
     s = socket.socket()
     host = socket.gethostname()
-    port = getattr(settings, "REPLICATE_SAFETY_PORT", 21451)
+    port = getattr(settings, "REPLICATE_SAFETY_PORT", DEFAULT_REPLICATE_SAFETY_PORT)
     s.bind((host, port))
 
     Schedule.objects.all().update(executing = False)
     timer = Manager()
     timer.add_operation(checkSchedules, getattr(settings, "REPLICATE_CHECKSCHEDULES_FREQUENCY", DEFAULT_REPLICATE_CHECKSCHEDULES_FREQUENCY))
     debug("replicate.start-ok")
-except:
+except socket.error:
     debug("replicate.start-fail")
     pass
-
+except DatabaseError:
+    pass
+    
 #VERSION = (0, 1)
 #
 # Dynamically calculate the version based on VERSION tuple

@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from django.contrib import admin
 
-from grappelli.sites import GrappelliSite
+#from grappelli.sites import GrappelliSite
 
 #admin.site = GrappelliSite()
 admin.autodiscover()

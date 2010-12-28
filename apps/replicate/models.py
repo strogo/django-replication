@@ -3,6 +3,11 @@ from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
 
+def smart_truncate(content, length=100, suffix='...'):
+    return content[:length].rsplit(' ', 1)[0]+suffix
+#	return (content if len(content) <= length else content[:length].rsplit(' ', 1)[0]+suffix)	
+
+
 class Host(models.Model):
     name = models.CharField(max_length=32, verbose_name=_(u"name"),
                         help_text=_(u"A name to identify this host."))
@@ -60,7 +65,7 @@ class Conduit(models.Model):
     name = models.CharField(max_length=64, verbose_name=_(u"name"))
     TYPE_CHOICES = (
         ('e1', _(u'Incremental/slave append only (no updates or deletes on slave)')),
-        ('e2', _(u'Empty/append alias Full, Snapshot  *N/A*')),
+#        ('e2', _(u'Empty/append alias Full, Snapshot  *N/A*')),
 #		('m1', 'MySQL master-slave'),
     )
     type = models.CharField(max_length=2, choices=TYPE_CHOICES, verbose_name=_(u"type"))
@@ -78,7 +83,7 @@ class Conduit(models.Model):
     primary_key_source = models.CharField(max_length=1, default='M', choices=PKSRC_CHOICES, verbose_name=_(u'primary key source'), help_text = _(u"Determines which database (master or slave) is going to be queried to determine the primary key."))
     detect_primary_key = models.BooleanField(default=True, help_text=_(u'Only works for MySQL databases so far.'), verbose_name = _(u"detect primary key"))
     key_fields = models.TextField(blank=True, null=True, help_text=_(u'Comma separated list of fields that compose a primary key.'), verbose_name = _(u"key fields"))
-    master_key_batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Size of keys block to fetch from master when comparing master/slave difference (optimization value affected by: network speed/latency, computer memory ammount).'), verbose_name = _(u"master key fetch buffer size"))
+    master_key_batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Size of keys block to fetch from master when comparing master/slave difference (optimization value affected by: network speed/latency, computer memory amount).'), verbose_name = _(u"master key fetch buffer size"))
     batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Amount of records to append per conduit execution (this value is independant of [master_key_batchsize] value.'), verbose_name=_(u"conduit batchsize"))
     fields_to_fetch = models.TextField(blank=True, null=True, help_text=_(u'Comma separated list of fields that will be replicated, if not specified all fields will be used.'), verbose_name=_(u"field to fetch"))
     dry_run = models.BooleanField(default=True, help_text=_(u"Don't actually modify any data only log messages"), verbose_name=_(u"dry run"))
@@ -88,7 +93,7 @@ class Conduit(models.Model):
     ignore_master_pull_errors = models.BooleanField(default=False, help_text=_(u'Ignore situations where a single master pull query returns more than 1 or 0 rows (typical of incorrect primary key fields)'), verbose_name=_(u"ignore master pull errors"))
     master_warnings_abort_threshold = models.PositiveIntegerField(default=0, help_text=_(u"Abort conduit after this many master warnings.  A value of zero disables this function."), verbose_name=_(u"master warnings abort threshold"))
 
-    timeout = models.PositiveIntegerField(default = 900, help_text = _(u"The maximum ammount of time that this conduit is allowed to execute before it gets stopped."), verbose_name = _(u"conduit timeout"))
+    timeout = models.PositiveIntegerField(default = 900, help_text = _(u"The maximum amount of time that this conduit is allowed to execute before it gets stopped."), verbose_name = _(u"conduit timeout"))
     minor_timeout = models.PositiveIntegerField(default = 60, help_text = _(u"Timeout (in seconds) for simple database operations, such as: Establishing connections, discovering primary keys, etc."), verbose_name = _(u"minor operations timeout"))
     major_timeout = models.PositiveIntegerField(default = 500, help_text = _(u"Timeout (in seconds) for complex database operations, such as: Fetching primary keys, fetching rows, etc."), verbose_name = _(u"major operations timeout"))
     
@@ -134,11 +139,6 @@ class Conduit(models.Model):
         verbose_name = _(u"conduit")
         verbose_name_plural = _(u"conduits")		
 
-
-def smart_truncate(content, length=100, suffix='...'):
-    return content[:length].rsplit(' ', 1)[0]+suffix
-#	return (content if len(content) <= length else content[:length].rsplit(' ', 1)[0]+suffix)	
-    
     
 class Log(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name=_(u"timestamp"))
@@ -191,12 +191,7 @@ class Schedule(models.Model):
     executing = models.BooleanField(editable=False, verbose_name=_(u"executing?"))
 
     def __unicode__(self):
-        output = "%s @ %s %s %s %s %s" % (self.conduit_set, self.minute, self.hours, self.day_of_month, self.month, self.day_of_week)
-        if self.enabled:
-            output += ' [X]'
-        else: 
-            output += ' [ ]'
-        
+        output = "%s @ %s %s %s %s %s [%s]" % (self.conduit_set, self.minute, self.hours, self.day_of_month, self.month, self.day_of_week, self.enabled and 'X' or ' ')
         return output
         
     def month_name(self):

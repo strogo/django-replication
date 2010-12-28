@@ -414,7 +414,7 @@ def execute_conduit(conduit):
         slave_connection.close()
         return
 
-    logger_ec.debug(u'Conduit: %s; master_table: %s; master_key_batchsize: %s' % (conduit, conduit.master_table, conduit.master_key_batchsize))
+    logger_ec.debug(u'Conduit: %s; master_table: %s; master_key_buffersize: %s' % (conduit, conduit.master_table, conduit.master_key_batchsize))
 
     try:
         if conduit.master_key_batchsize:

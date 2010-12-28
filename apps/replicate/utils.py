@@ -4,6 +4,7 @@ import logging.handlers
 import sys
 import traceback
 import datetime	
+import time
 from multiprocessing import Process
 
 from django.conf import settings
@@ -14,11 +15,11 @@ from django.utils.importlib import import_module
 
 from timelimited import TimeLimited, TimeLimitExpired
 from models import Conduit, Log
+from debug import debug
 
 class DBHandler(logging.Handler):
     """Custom loggin handler that outputs to a hardcoded DB table"""
     def emit(self, record):
-        import time
         ct = time.localtime(record.created)
         log_entry = Log(
             module = record.name,
@@ -86,23 +87,19 @@ def load_backend(backend_name):
             else:
                 raise # If there's some other error, this must be an error in Django itself.
 
-def execute_conduit(request, conduit_id):
+def execute_conduit_manually(conduit):
     """Helper view to manually execute a conduit"""
-    from multiprocessing import Process
     try:
-        conduit_obj = Conduit.objects.get(pk = int(conduit_id))
-        logger_ec.info(u'Conduit: %s; Manually executing conduit...' % conduit_obj)
+        logger_ec.info(u'Conduit: %s; Manually executing conduit...' % conduit)
 
-        c_p = Process(target=execute_timed_conduit, args=(conduit_obj,))
+        c_p = Process(target=execute_timed_conduit, args=(conduit,))
         c_p.start()	
 #		execute_timed_conduit(conduit_obj)
         
     #	logger_ec.info('Conduit: %s; Finished manual execution.' % conduit_obj)
         
-        return HttpResponse("DONE")
     except KeyboardInterrupt:
-        #print "KeyboardInterrupt @ execute_conduit"
-        return	
+        debug("KeyboardInterrupt @ execute_conduit")
         
 #http://code.activestate.com/recipes/137270/  by Christopher Prinos & others
 def ResultIter(cursor, arraysize=1000, timeout = 0):
@@ -117,7 +114,7 @@ def ResultIter(cursor, arraysize=1000, timeout = 0):
             for result in results:
                 yield result
     except KeyboardInterrupt:
-        #print "KeyboardInterrupt @ ResultIter"
+        debug("KeyboardInterrupt @ ResultIter")
         return	
 
 def run_timed_query(cursor, log_msg, query_string, timeout=10, *query_args):
@@ -173,24 +170,24 @@ def execute_conduit(conduit):
     if conduit.master_db.backend == 'oracle':
         #Reason unknown: Oracle 9 expects a str not an unicode
         master_connection = master_backend.DatabaseWrapper({
-                'DATABASE_HOST': str(conduit.master_db.host.ip_address),
-                'DATABASE_NAME': str(conduit.master_db.name),
+                'HOST': str(conduit.master_db.host.ip_address),
+                'NAME': str(conduit.master_db.name),
                 #TODO: turn conduit.master_db.options into a dict
-                'DATABASE_OPTIONS': {},
-                'DATABASE_USER': str(conduit.master_db.username),
-                'DATABASE_PASSWORD': str(conduit.master_db.password),
-                'DATABASE_PORT': str(conduit.master_db.port),
+                'OPTIONS': {},
+                'USER': str(conduit.master_db.username),
+                'PASSWORD': str(conduit.master_db.password),
+                'PORT': str(conduit.master_db.port),
                 'TIME_ZONE': str(conduit.master_db.timezone),
             })
     else:
         master_connection = master_backend.DatabaseWrapper({
-            'DATABASE_HOST': conduit.master_db.host.ip_address,
-            'DATABASE_NAME': conduit.master_db.name,
+            'HOST': conduit.master_db.host.ip_address,
+            'NAME': conduit.master_db.name,
             #TODO: turn conduit.master_db.options into a dict
-            'DATABASE_OPTIONS': {},
-            'DATABASE_USER': conduit.master_db.username,
-            'DATABASE_PASSWORD': conduit.master_db.password,
-            'DATABASE_PORT': conduit.master_db.port,
+            'OPTIONS': {},
+            'USER': conduit.master_db.username,
+            'PASSWORD': conduit.master_db.password,
+            'PORT': conduit.master_db.port,
             'TIME_ZONE': conduit.master_db.timezone,
         })
     try:
@@ -212,13 +209,13 @@ def execute_conduit(conduit):
         return traceback.format_exception(exc_type, exc_info, None)				
         
     slave_connection = slave_backend.DatabaseWrapper({
-        'DATABASE_HOST': conduit.slave_db.host.ip_address,
-        'DATABASE_NAME': conduit.slave_db.name,
+        'HOST': conduit.slave_db.host.ip_address,
+        'NAME': conduit.slave_db.name,
         #TODO: turn conduit.master_db.options into a dict
-        'DATABASE_OPTIONS': {},
-        'DATABASE_USER': conduit.slave_db.username,
-        'DATABASE_PASSWORD': conduit.slave_db.password,
-        'DATABASE_PORT': conduit.slave_db.port,
+        'OPTIONS': {},
+        'USER': conduit.slave_db.username,
+        'PASSWORD': conduit.slave_db.password,
+        'PORT': conduit.slave_db.port,
         'TIME_ZONE': conduit.slave_db.timezone,
     })
 

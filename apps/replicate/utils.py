@@ -157,7 +157,50 @@ def execute_timed_conduit(conduit_obj):
 
 def fix_encoding(keys):
     for key in keys:
-        yield tuple(map(smart_unicode, key)) 
+        yield tuple(map(smart_unicode, key))
+        
+def open_database(conduit, db):
+    try:
+        backend = load_backend(db.backend)
+    except:
+        (exc_type, exc_info, tb) = sys.exc_info()
+        logger_ec.error(u'Conduit: %s; backend: %s; %s.' % (conduit, db.backend, traceback.format_exception(exc_type, exc_info, None)[0]))
+        return traceback.format_exception(exc_type, exc_info, None)		
+        
+    if db.backend == 'oracle':
+        #Reason unknown: Oracle 9 expects a str not an unicode
+        connection = backend.DatabaseWrapper({
+                'HOST': str(db.host.ip_address),
+                'NAME': str(db.name),
+                #TODO: turn conduit.master_db.options into a dict
+                'OPTIONS': {},
+                'USER': str(db.username),
+                'PASSWORD': str(db.password),
+                'PORT': str(db.port),
+                'TIME_ZONE': str(db.timezone),
+            })
+    else:
+        connection = backend.DatabaseWrapper({
+            'HOST': db.host.ip_address,
+            'NAME': db.name,
+            #TODO: turn conduit.master_db.options into a dict
+            'OPTIONS': {},
+            'USER': db.username,
+            'PASSWORD': db.password,
+            'PORT': db.port,
+            'TIME_ZONE': db.timezone,
+        })
+    try:
+        return TimeLimited(connection.cursor, conduit.minor_timeout)()
+    except TimeLimitExpired:
+        (exc_type, exc_info, tb) = sys.exc_info()
+        logger_ec.error(u'Conduit: %s; db: %s; Timeout error.' % (conduit, db))
+        return traceback.format_exception(exc_type, exc_info, None)
+    except:
+        (exc_type, exc_info, tb) = sys.exc_info()
+        logger_ec.error(u'Conduit: %s; db: %s; %s.' % (conduit, db, traceback.format_exception(exc_type, exc_info, None)[0]))
+        return traceback.format_exception(exc_type, exc_info, None)
+
 
 def execute_conduit(conduit):
     """Execute a single conduit"""
@@ -168,7 +211,9 @@ def execute_conduit(conduit):
     #        a .fetch*() method.
 
     logger_ec.info(u"Conduit: %s; Started." % conduit)
-    
+    master_cursor = open_database(conduit.master_db)
+    slave_cursor = open_database(conduit.slave_db)
+    '''
     try:
         master_backend = load_backend(conduit.master_db.backend)
     except:
@@ -238,7 +283,7 @@ def execute_conduit(conduit):
         (exc_type, exc_info, tb) = sys.exc_info()
         logger_ec.error(u'Conduit: %s; slave_db: %s; %s.' % (conduit, conduit.slave_db, traceback.format_exception(exc_type, exc_info, None)[0]))
         return traceback.format_exception(exc_type, exc_info, None)
-
+    '''
     # TODO: Implement also for other DBAs
     #ORACLE - SELECT B.COLUMN_NAME FROM ALL_CONSTRAINS A, ALL_CONS_COLUMNS B WHERE A.CONSTRAINT_NAME=B.CONTRAINT_NAME AND A.TABLE=<> AND A.CONTRAINT_TYPE='P';
     #ORACLE - SELECT * FROM ALL_CONSTRAINTS WHERE CONSTRAINT_TYPE='P' AND TABLE_NAME=<>

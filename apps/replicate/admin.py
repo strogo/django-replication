@@ -118,11 +118,11 @@ class DatabaseAdmin(admin.ModelAdmin):
 class ConduitAdmin(admin.ModelAdmin):
     search_fields = ['name']
     search_fields_verbose = ['Name']
-    radio_fields = { 'type': admin.VERTICAL, 'primary_key_source': admin.HORIZONTAL }
+    radio_fields = { 'primary_key_source': admin.HORIZONTAL }
     list_display = ['name', 'master_db', 'master_table', 'slave_db', 'slave_table', 'get_conduit_sets', 'is_enabled']
     fieldsets = (
         (None, {
-            'fields': ('name', 'type', 'master_db', 'slave_db', 'master_table', 'master_subset', 'slave_table', 'slave_subset', 'primary_key_source', 'detect_primary_key', 'key_fields', 'fields_to_fetch', 'dry_run')
+            'fields': ('name', 'master_db', 'slave_db', 'master_table', 'master_subset', 'slave_table', 'slave_subset', 'primary_key_source', 'detect_primary_key', 'key_fields', 'fields_to_fetch', 'dry_run')
         }),
         (_(u'Error handling'), {
             'classes': ('collapse-closed',),

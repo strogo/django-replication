@@ -63,12 +63,6 @@ class Database(models.Model):
         
 class Conduit(models.Model):
     name = models.CharField(max_length=64, verbose_name=_(u"name"))
-    TYPE_CHOICES = (
-        ('e1', _(u'Incremental/slave append only (no updates or deletes on slave)')),
-#        ('e2', _(u'Empty/append alias Full, Snapshot  *N/A*')),
-#		('m1', 'MySQL master-slave'),
-    )
-    type = models.CharField(max_length=2, choices=TYPE_CHOICES, verbose_name=_(u"type"))
     master_db = models.ForeignKey(Database, related_name='master_db', help_text=_(u"Database where records will be fetch."), verbose_name = _(u"master database"))
     slave_db = models.ForeignKey(Database, related_name='slave_db', help_text=_(u"Database that will receive (or update, or delete) records."), verbose_name = _(u"slave database"))
     master_table = models.CharField(max_length=32, verbose_name=_(u"master table"))

@@ -130,7 +130,7 @@ class ConduitAdmin(admin.ModelAdmin):
         }),
         (_(u'Performance'), {
             'classes': ('collapse-closed',),
-            'fields': ('master_key_batchsize', 'batchsize')
+            'fields': ('master_key_batchsize', 'slave_key_batchsize', 'batchsize')
         }),
         (_(u'Timeouts'), {
             'classes': ('collapse-closed',),

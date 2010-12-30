@@ -414,6 +414,15 @@ def insert_rows(conduit, append_list, fields_to_fetch, keys_template, insert_tem
     logger_ec.info(u'Conduit: %s; Total rows fetched from master db: %d.' % (conduit, row_fetch_count))
 
 
+def delete_rows(conduit, delete_list, cursor, table, keys_template):
+    logger_ec.debug(u'Conduit: %s; Starting rows delete...' % (conduit))
+    delete_rows = 0
+    for key in delete_list:
+        cursor.execute("DELETE FROM %s WHERE %s " % (table, (keys_template) % (tuple(key))))
+        deleted_rows += 1
+        
+    logger_ec.debug(u'Conduit: %s; deleted rows: %s' % (conduit, deleted_rows))        
+
 
 def execute_conduit(conduit):
     """Execute a single conduit"""

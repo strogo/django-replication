@@ -157,7 +157,7 @@ def execute_timed_conduit(conduit_obj):
 
 def fix_encoding(keys):
     for key in keys:
-        yield tuple(map(smart_unicode, key))
+        yield tuple(map(smart_unicode, key)) 
 
 def execute_conduit(conduit):
     """Execute a single conduit"""

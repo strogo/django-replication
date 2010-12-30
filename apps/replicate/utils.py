@@ -159,13 +159,9 @@ def fix_encoding(keys):
     for key in keys:
         yield tuple(map(smart_unicode, key))
         
+        
 def open_database(conduit, db):
-    try:
-        backend = load_backend(db.backend)
-    except:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; backend: %s; %s.' % (conduit, db.backend, traceback.format_exception(exc_type, exc_info, None)[0]))
-        return traceback.format_exception(exc_type, exc_info, None)		
+    backend = load_backend(db.backend)
         
     if db.backend == 'oracle':
         #Reason unknown: Oracle 9 expects a str not an unicode
@@ -190,100 +186,10 @@ def open_database(conduit, db):
             'PORT': db.port,
             'TIME_ZONE': db.timezone,
         })
-    try:
-        return TimeLimited(connection.cursor, conduit.minor_timeout)()
-    except TimeLimitExpired:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; db: %s; Timeout error.' % (conduit, db))
-        return traceback.format_exception(exc_type, exc_info, None)
-    except:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; db: %s; %s.' % (conduit, db, traceback.format_exception(exc_type, exc_info, None)[0]))
-        return traceback.format_exception(exc_type, exc_info, None)
+    return connection, TimeLimited(connection.cursor, conduit.minor_timeout)()
 
 
-def execute_conduit(conduit):
-    """Execute a single conduit"""
-    # rowcount is quirky for ORACLE 9
-    #[7] The rowcount attribute may be coded in a way that updates
-    #        its value dynamically. This can be useful for databases that
-    #        return usable rowcount values only after the first call to
-    #        a .fetch*() method.
-
-    logger_ec.info(u"Conduit: %s; Started." % conduit)
-    master_cursor = open_database(conduit.master_db)
-    slave_cursor = open_database(conduit.slave_db)
-    '''
-    try:
-        master_backend = load_backend(conduit.master_db.backend)
-    except:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; master_backend: %s; %s.' % (conduit, conduit.master_db.backend, traceback.format_exception(exc_type, exc_info, None)[0]))
-        return traceback.format_exception(exc_type, exc_info, None)		
-        
-    if conduit.master_db.backend == 'oracle':
-        #Reason unknown: Oracle 9 expects a str not an unicode
-        master_connection = master_backend.DatabaseWrapper({
-                'HOST': str(conduit.master_db.host.ip_address),
-                'NAME': str(conduit.master_db.name),
-                #TODO: turn conduit.master_db.options into a dict
-                'OPTIONS': {},
-                'USER': str(conduit.master_db.username),
-                'PASSWORD': str(conduit.master_db.password),
-                'PORT': str(conduit.master_db.port),
-                'TIME_ZONE': str(conduit.master_db.timezone),
-            })
-    else:
-        master_connection = master_backend.DatabaseWrapper({
-            'HOST': conduit.master_db.host.ip_address,
-            'NAME': conduit.master_db.name,
-            #TODO: turn conduit.master_db.options into a dict
-            'OPTIONS': {},
-            'USER': conduit.master_db.username,
-            'PASSWORD': conduit.master_db.password,
-            'PORT': conduit.master_db.port,
-            'TIME_ZONE': conduit.master_db.timezone,
-        })
-    try:
-        master_cursor = TimeLimited(master_connection.cursor, conduit.minor_timeout)()
-    except TimeLimitExpired:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; master_db: %s; Timeout error.' % (conduit, conduit.master_db))
-        return traceback.format_exception(exc_type, exc_info, None)
-    except:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; master_db: %s; %s.' % (conduit, conduit.master_db, traceback.format_exception(exc_type, exc_info, None)[0]))
-        return traceback.format_exception(exc_type, exc_info, None)
-
-    try:
-        slave_backend = load_backend(conduit.slave_db.backend)
-    except:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; slave_backend: %s; %s.' % (conduit, conduit.slave_db.backend, traceback.format_exception(exc_type, exc_info, None)[0]))
-        return traceback.format_exception(exc_type, exc_info, None)				
-        
-    slave_connection = slave_backend.DatabaseWrapper({
-        'HOST': conduit.slave_db.host.ip_address,
-        'NAME': conduit.slave_db.name,
-        #TODO: turn conduit.master_db.options into a dict
-        'OPTIONS': {},
-        'USER': conduit.slave_db.username,
-        'PASSWORD': conduit.slave_db.password,
-        'PORT': conduit.slave_db.port,
-        'TIME_ZONE': conduit.slave_db.timezone,
-    })
-
-    try:
-        slave_cursor = TimeLimited(slave_connection.cursor, conduit.minor_timeout)()
-    except TimeLimitExpired:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; slave_db: %s; Timeout error.' % (conduit, conduit.slave_db))
-        return traceback.format_exception(exc_type, exc_info, None)
-    except:
-        (exc_type, exc_info, tb) = sys.exc_info()
-        logger_ec.error(u'Conduit: %s; slave_db: %s; %s.' % (conduit, conduit.slave_db, traceback.format_exception(exc_type, exc_info, None)[0]))
-        return traceback.format_exception(exc_type, exc_info, None)
-    '''
+def determine_primary_keys(conduit, master_cursor, slave_cursor):
     # TODO: Implement also for other DBAs
     #ORACLE - SELECT B.COLUMN_NAME FROM ALL_CONSTRAINS A, ALL_CONS_COLUMNS B WHERE A.CONSTRAINT_NAME=B.CONTRAINT_NAME AND A.TABLE=<> AND A.CONTRAINT_TYPE='P';
     #ORACLE - SELECT * FROM ALL_CONSTRAINTS WHERE CONSTRAINT_TYPE='P' AND TABLE_NAME=<>
@@ -309,11 +215,7 @@ def execute_conduit(conduit):
             try:
                 run_timed_query(auto_cursor, error_msg, query, conduit.minor_timeout)
             except:
-                slave_cursor.close()
-                master_cursor.close()
-                master_connection.close()
-                slave_connection.close()
-                return
+                raise
         
             pk_column_names = [(k[4]) for k in auto_cursor.fetchall()]
         elif auto_backend == 'sqlite3':
@@ -323,11 +225,7 @@ def execute_conduit(conduit):
             try:
                 run_timed_query(auto_cursor, error_msg, query, conduit.minor_timeout)
             except:
-                slave_cursor.close()
-                master_cursor.close()
-                master_connection.close()
-                slave_connection.close()
-                return
+                raise
             
             #SQLITE format = cid | name | type | notnull | dflt_value | pk
             pk_column_names = [k[1] for k in auto_cursor.fetchall() if k[5]]
@@ -379,9 +277,43 @@ def execute_conduit(conduit):
     if not pk_column_names or pk_column_names == ['']:
         error_msg = u'No primary key fields; check that your schema defines them, that automatic discover is supported for your database or provide them explicitly in the conduit.'
         logger_ec.error(u'Conduit: %s; auto_db: %s; %s' % (conduit, auto_db, error_msg))
-        return True
+        raise
+    
+    return auto_backend, auto_table, auto_cursor, pk_column_names
 
-    #Assemble query to fetch keys
+
+def determine_append_list(conduit, master_cursor, slave_cursor, master_query, slave_query):
+    #EXECUTE KEY FETCH IN SLAVE
+    try:
+        run_timed_query(slave_cursor, u'Conduit: %s; slave_db:%s; fetch_keys' % (conduit, conduit.slave_table), slave_query, conduit.major_timeout)
+    except:
+        raise
+
+    try:
+        run_timed_query(master_cursor, u'Conduit: %s; master_db: %s; fetch_keys' % (conduit, conduit.master_db), master_query, conduit.major_timeout)
+    except:
+        raise
+   
+    #EXECUTE KEY FETCH in MASTER
+    logger_ec.debug(u'Conduit: %s; Starting fetching and comparing keys from master and slave....' % conduit)
+
+    logger_ec.debug(u'Conduit: %s; master_table: %s; master_key_buffersize: %s' % (conduit, conduit.master_table, conduit.master_key_batchsize))
+    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_key_buffersize: %s' % (conduit, conduit.slave_table, conduit.slave_key_batchsize))
+
+    try:
+        return list(set(fix_encoding(ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout))) - set(fix_encoding(ResultIter(slave_cursor, conduit.slave_key_batchsize, conduit.major_timeout))))
+
+    except TimeLimitExpired:
+        logger_ec.error(u'Conduit: %s; Fetching keys; Timeout error' % conduit)
+        raise
+
+    logger_ec.debug(u'Conduit: %s; master_table: %s; master_keys: %s' % (conduit, conduit.master_table, master_cursor.rowcount))
+    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, slave_cursor.rowcount))
+    logger_ec.info(u'Conduit: %s; Total rows to append: %s' % (conduit, len(appendlist)))
+
+
+def assemble_queries(conduit, auto_backend, auto_table, auto_cursor, pk_column_names):
+   #Assemble query to fetch keys
     keys_query = "SELECT "+ ", ".join(["%s" % k for k in pk_column_names])
     keys_template = " AND ".join(["%s='%%s'" % k for k in pk_column_names])
 
@@ -409,26 +341,19 @@ def execute_conduit(conduit):
     #TODO:
     #	- sqlite3
 
-    try:
-        if auto_backend == 'mysql' or auto_backend == 'postgresql' or auto_backend == 'postgresql_psycopg2':
-            query = 'SELECT %s FROM %s LIMIT 1' % (fields_to_fetch, auto_table)
-        elif auto_backend == 'oracle':
-            query = 'SELECT %s FROM %s WHERE ROWNUM <= 1' % (fields_to_fetch, auto_table)
-        elif auto_backend == 'ado_mssql':
-            #UNTESTED
-            query = 'SELECT TOP 1 % FROM %s' % (fields_to_fetch, auto_table)
-        else:
-            logger_ec.error(u'Conduit: %s; Automatic database field description is not yet supported this database backend: %s.' % (conduit, auto_backend))
-            return True
+    if auto_backend == 'mysql' or auto_backend == 'postgresql' or auto_backend == 'postgresql_psycopg2':
+        query = 'SELECT %s FROM %s LIMIT 1' % (fields_to_fetch, auto_table)
+    elif auto_backend == 'oracle':
+        query = 'SELECT %s FROM %s WHERE ROWNUM <= 1' % (fields_to_fetch, auto_table)
+    elif auto_backend == 'ado_mssql':
+        #UNTESTED
+        query = 'SELECT TOP 1 % FROM %s' % (fields_to_fetch, auto_table)
+    else:
+        logger_ec.error(u'Conduit: %s; Automatic database field description is not yet supported this database backend: %s.' % (conduit, auto_backend))
+        return True
 
-        run_timed_query(auto_cursor, u'Conduit: %s; auto_db: %s; fields_to_fetch' % (conduit, auto_db),  query, conduit.minor_timeout)
-    except:
-        slave_cursor.close()
-        master_cursor.close()
-        master_connection.close()
-        slave_connection.close()
-        raise
-        
+    run_timed_query(auto_cursor, u'Conduit: %s; fields_to_fetch' % (conduit),  query, conduit.minor_timeout)
+
     single_row = auto_cursor.fetchone()
     
     insert_template = ('INSERT INTO %s VALUES(%s)' % (conduit.slave_table, ", ".join(["%s" for k in auto_cursor.description])))
@@ -438,116 +363,110 @@ def execute_conduit(conduit):
     logger_ec.debug(u'Conduit: %s; insert_template: %s' % (conduit, insert_template))
     logger_ec.debug(u'Conduit: %s; converted fields_to_fetch: %s' % (conduit, fields_to_fetch))
 
-    #EXECUTE KEY FETCH IN SLAVE
-    #logger_ec.debug(u'Conduit: %s; Starting fetching keys from slave....' % conduit)
+    return master_query, slave_query, insert_template, fields_to_fetch, keys_template
+
+
+def execute_conduit(conduit):
+    """Execute a single conduit"""
+    # rowcount is quirky for ORACLE 9
+    #[7] The rowcount attribute may be coded in a way that updates
+    #        its value dynamically. This can be useful for databases that
+    #        return usable rowcount values only after the first call to
+    #        a .fetch*() method.
+
+    logger_ec.info(u"Conduit: %s; Started." % conduit)
+    try:
+        master_connection, master_cursor = open_database(conduit, conduit.master_db)
+    #except TimeLimitExpired:
+    #    (exc_type, exc_info, tb) = sys.exc_info()
+    #    logger_ec.error(u'Conduit: %s; db: %s; Timeout error.' % (conduit, db))
+    #    return traceback.format_exception(exc_type, exc_info, None)
+    except:
+        (exc_type, exc_info, tb) = sys.exc_info()
+        logger_ec.error(u'Conduit: %s; master backend: %s; %s.' % (conduit, conduit.master_db.backend, traceback.format_exception(exc_type, exc_info, None)[0]))
+        return traceback.format_exception(exc_type, exc_info, None)        
 
     try:
-        run_timed_query(slave_cursor, u'Conduit: %s; slave_db:%s; fetch_keys' % (conduit, conduit.slave_table), slave_query, conduit.major_timeout)
+        slave_connection, slave_cursor = open_database(conduit, conduit.slave_db)
     except:
-        slave_cursor.close()
-        master_cursor.close()
-        master_connection.close()
-        slave_connection.close()
-        return
+        (exc_type, exc_info, tb) = sys.exc_info()
+        logger_ec.error(u'Conduit: %s; slave backend: %s; %s.' % (conduit, conduit.slave_db.backend, traceback.format_exception(exc_type, exc_info, None)[0]))
+        return traceback.format_exception(exc_type, exc_info, None)        
 
-    try:
-        run_timed_query(master_cursor, u'Conduit: %s; master_db: %s; fetch_keys' % (conduit, conduit.master_db), master_query, conduit.major_timeout)
-    except:
-        slave_cursor.close()
-        master_cursor.close()
-        master_connection.close()
-        slave_connection.close()
-        return
-        
-    #slave_keys = slave_cursor.fetchall()
-    #logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, len(slave_keys)))
-
-    #slave_keys_dict = dict(zip(slave_keys, slave_keys))
+    try:    
+        auto_backend, auto_table, auto_cursor, pk_column_names = determine_primary_keys(conduit, master_cursor, slave_cursor)
     
-    #EXECUTE KEY FETCH in MASTER
-    logger_ec.debug(u'Conduit: %s; Starting fetching and comparing keys from master and slave....' % conduit)
+        master_query, slave_query, insert_template, fields_to_fetch, keys_template = assemble_queries(conduit, auto_backend, auto_table, auto_cursor, pk_column_names)
 
-
-    logger_ec.debug(u'Conduit: %s; master_table: %s; master_key_buffersize: %s' % (conduit, conduit.master_table, conduit.master_key_batchsize))
-    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_key_buffersize: %s' % (conduit, conduit.slave_table, conduit.slave_key_batchsize))
-
-    try:
-    #    if conduit.master_key_batchsize:
-    #        appendlist = [x for x in ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout) if x not in slave_keys_dict]
-    #    else:
-    #        master_keys = TimeLimited(master_cursor.fetchall, conduit.major_timeout)()
-    #        appendlist = [x for x in master_keys if x not in slave_keys_dict]
-
-        appendlist = list(set(fix_encoding(ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout))) - set(fix_encoding(ResultIter(slave_cursor, conduit.slave_key_batchsize, conduit.major_timeout))))
-
-    except TimeLimitExpired:
-        logger_ec.error(u'Conduit: %s; Fetching keys; Timeout error' % conduit)
-        slave_cursor.close()
-        master_cursor.close()
-        master_connection.close()
-        slave_connection.close()
-        return 
-
-    logger_ec.debug(u'Conduit: %s; master_table: %s; master_keys: %s' % (conduit, conduit.master_table, master_cursor.rowcount))
-    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, slave_cursor.rowcount))
-    logger_ec.info(u'Conduit: %s; Total rows to append: %s' % (conduit, len(appendlist)))
-
-    batch_size = conduit.batchsize
-
-    logger_ec.debug(u'Conduit: %s; batch_size: %s' % (conduit, batch_size))
-    logger_ec.debug(u'Conduit: %s; dry_run: %s' % (conduit, conduit.dry_run))
-    logger_ec.debug(u'Conduit: %s; Starting row fetch...' % (conduit))
-
-    master_warning_counter = slave_warning_counter = row_fetch_count = 0
-
-    #TODO: convert this loop's db query,etc to timelimited
-    for key in appendlist[:batch_size]:
-        #Fetch single row from master
-        try:
-            master_cursor.execute("SELECT %s FROM %s WHERE %s " % (fields_to_fetch, conduit.master_table, (keys_template) % (tuple(key))))
-            #TODO: Implement multi-row fetch w/ cursor.executemany("SELECT ...", keys[])
-        except:
-            (exc_type, exc_info, tb) = sys.exc_info()
-            logger_ec.error(u'Conduit: %s; master_table: %s; fetch_row: Database error: %s' % (conduit, conduit.master_table, exc_info))
-            return
+        append_list = determine_append_list(conduit, master_cursor, slave_cursor, master_query, slave_query)
         
-        #This is necesary to update rowcount
-        row = master_cursor.fetchall()[0]
-        #TODO: Implement multi-row fetch  w/ cursor.fetchmany(3) or w/ ResultIter
-        if master_cursor.rowcount != 1:
-            #TODO: rowcount != batch_block_size
-            error_msg = 'Single master query returned an unexpected number or rows (0 or more than 1), check your primary keys.'
-            if conduit.ignore_master_pull_errors:
-                logger_ec.warning(u'master_table: %s; %s' % (conduit.master_table, error_msg))
-                master_warning_counter += 1
-                if master_warning_counter > conduit.master_warnings_abort_threshold and conduit.master_warnings_abort_threshold != 0:
-                    error_msg = u'Master warning count threshold has been exceded.'
+        batch_size = conduit.batchsize
+
+        logger_ec.debug(u'Conduit: %s; batch_size: %s' % (conduit, batch_size))
+        logger_ec.debug(u'Conduit: %s; dry_run: %s' % (conduit, conduit.dry_run))
+        logger_ec.debug(u'Conduit: %s; Starting row fetch...' % (conduit))
+
+        master_warning_counter = slave_warning_counter = row_fetch_count = 0
+
+        #TODO: convert this loop's db query,etc to timelimited
+        for key in append_list[:batch_size]:
+            #Fetch single row from master
+            try:
+                master_cursor.execute("SELECT %s FROM %s WHERE %s " % (fields_to_fetch, conduit.master_table, (keys_template) % (tuple(key))))
+                #TODO: Implement multi-row fetch w/ cursor.executemany("SELECT ...", keys[])
+            except:
+                (exc_type, exc_info, tb) = sys.exc_info()
+                logger_ec.error(u'Conduit: %s; master_table: %s; fetch_row: Database error: %s' % (conduit, conduit.master_table, exc_info))
+                return
+            
+            #This is necesary to update rowcount
+            row = master_cursor.fetchall()[0]
+            #TODO: Implement multi-row fetch  w/ cursor.fetchmany(3) or w/ ResultIter
+            if master_cursor.rowcount != 1:
+                #TODO: rowcount != batch_block_size
+                error_msg = 'Single master query returned an unexpected number or rows (0 or more than 1), check your primary keys.'
+                if conduit.ignore_master_pull_errors:
+                    logger_ec.warning(u'master_table: %s; %s' % (conduit.master_table, error_msg))
+                    master_warning_counter += 1
+                    if master_warning_counter > conduit.master_warnings_abort_threshold and conduit.master_warnings_abort_threshold != 0:
+                        error_msg = u'Master warning count threshold has been exceded.'
+                        logger_ec.error(u'Conduit: %s; master_table: %s; %s' % (conduit, conduit.master_table, error_msg))
+                        return
+                else:
                     logger_ec.error(u'Conduit: %s; master_table: %s; %s' % (conduit, conduit.master_table, error_msg))
                     return
-            else:
-                logger_ec.error(u'Conduit: %s; master_table: %s; %s' % (conduit, conduit.master_table, error_msg))
-                return
 
-        #Insert row into slave
-        try:
-            if not conduit.dry_run:
-                slave_cursor.execute(insert_template, row)
-                #cursor.executemany("INSERT INTO animals (name, species) VALUES (%s, %s)", [  ('Rollo', 'Rat'),  ('Dudley', 'Dolphin'),  ('Mark', 'Marmoset') ])
-                row_fetch_count += 1
-        except: 
-            (exc_type, exc_info, tb) = sys.exc_info()
-            if conduit.ignore_slave_modify_errors:
-                slave_warning_counter += 1
-                logger_ec.warning(u'Conduit: %s; slave_table: %s; row_insert: Database error: %s' % (conduit, conduit.slave_table, exc_info))
-                if slave_warning_counter > conduit.slave_warnings_abort_threshold and conduit.slave_warnings_abort_threshold != 0:
-                    error_msg = u'Slave warning count threshold has been exceded.'
-                    logger_ec.error(u'Conduit: %s; slave_table: %s; %s' % (conduit, conduit.slave_table, error_msg))
+            #Insert row into slave
+            try:
+                if not conduit.dry_run:
+                    slave_cursor.execute(insert_template, row)
+                    #cursor.executemany("INSERT INTO animals (name, species) VALUES (%s, %s)", [  ('Rollo', 'Rat'),  ('Dudley', 'Dolphin'),  ('Mark', 'Marmoset') ])
+                    row_fetch_count += 1
+            except: 
+                (exc_type, exc_info, tb) = sys.exc_info()
+                if conduit.ignore_slave_modify_errors:
+                    slave_warning_counter += 1
+                    logger_ec.warning(u'Conduit: %s; slave_table: %s; row_insert: Database error: %s' % (conduit, conduit.slave_table, exc_info))
+                    if slave_warning_counter > conduit.slave_warnings_abort_threshold and conduit.slave_warnings_abort_threshold != 0:
+                        error_msg = u'Slave warning count threshold has been exceded.'
+                        logger_ec.error(u'Conduit: %s; slave_table: %s; %s' % (conduit, conduit.slave_table, error_msg))
+                        return
+                else:
+                    logger_ec.error(u'Conduit: %s; slave_table: %s; row_insert: Database error: %s' % (conduit, conduit.slave_table, exc_info))
                     return
-            else:
-                logger_ec.error(u'Conduit: %s; slave_table: %s; row_insert: Database error: %s' % (conduit, conduit.slave_table, exc_info))
-                return
 
-    logger_ec.info(u'Conduit: %s; Total rows fetched from master: %d.' % (conduit, row_fetch_count))
+        logger_ec.info(u'Conduit: %s; Total rows fetched from master: %d.' % (conduit, row_fetch_count))
+
+    except:
+        (exc_type, exc_info, tb) = sys.exc_info()
+        logger_ec.error(u'Conduit: %s; %s.' % (conduit, traceback.format_exception(exc_type, exc_info, None)[0]))
+               
+        slave_cursor.close()
+        master_cursor.close()
+        master_connection.close()
+        slave_connection.close()
+        return   
+    
 
     #Cleanup
     slave_cursor.close()

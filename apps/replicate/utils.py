@@ -12,6 +12,7 @@ from django.db import connection as django_connection
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response, get_object_or_404
 from django.utils.importlib import import_module
+from django.utils.encoding import smart_unicode
 
 from timelimited import TimeLimited, TimeLimitExpired
 from models import Conduit, Log
@@ -102,17 +103,20 @@ def execute_conduit_manually(conduit):
         debug("KeyboardInterrupt @ execute_conduit")
         
 #http://code.activestate.com/recipes/137270/  by Christopher Prinos & others
-def ResultIter(cursor, arraysize=1000, timeout = 0):
+def ResultIter(cursor, arraysize=1000, timeout=0):
     """An iterator that uses fetchmany to keep memory usage down
     modified to add a timeout option"""
-    try:		
-        t_fetchmany = TimeLimited(cursor.fetchmany, timeout)
-        while True:
-            results = t_fetchmany(arraysize)
-            if not results:
-                break
-            for result in results:
-                yield result
+    try:	
+        if arraysize != 0:
+            t_fetchmany = TimeLimited(cursor.fetchmany, timeout)
+            while True:
+                results = t_fetchmany(arraysize)
+                if not results:
+                    break
+                for result in results:
+                    yield result
+        else:
+            yield TimeLimited(cursor.fetchall, timeout)()            
     except KeyboardInterrupt:
         debug("KeyboardInterrupt @ ResultIter")
         return	
@@ -149,6 +153,11 @@ def execute_timed_conduit(conduit_obj):
         (exc_type, exc_info, tb) = sys.exc_info()
         logger_ec.error(u'Conduit: %s; Error; %s'  % (conduit_obj, traceback.format_exception(exc_type, exc_info, None)[0]))
         return traceback.format_exception(exc_type, exc_info, None)
+
+
+def fix_encoding(keys):
+    for key in keys:
+        yield tuple(map(smart_unicode, key))
 
 def execute_conduit(conduit):
     """Execute a single conduit"""
@@ -385,7 +394,7 @@ def execute_conduit(conduit):
     logger_ec.debug(u'Conduit: %s; converted fields_to_fetch: %s' % (conduit, fields_to_fetch))
 
     #EXECUTE KEY FETCH IN SLAVE
-    logger_ec.debug(u'Conduit: %s; Starting fetching keys from slave....' % conduit)
+    #logger_ec.debug(u'Conduit: %s; Starting fetching keys from slave....' % conduit)
 
     try:
         run_timed_query(slave_cursor, u'Conduit: %s; slave_db:%s; fetch_keys' % (conduit, conduit.slave_table), slave_query, conduit.major_timeout)
@@ -395,15 +404,6 @@ def execute_conduit(conduit):
         master_connection.close()
         slave_connection.close()
         return
-        
-    #TODO: convert to ResultIter
-    slave_keys = slave_cursor.fetchall()
-    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, len(slave_keys)))
-
-    slave_keys_dict = dict(zip(slave_keys, slave_keys))
-    
-    #EXECUTE KEY FETCH in MASTER
-    logger_ec.debug(u'Conduit: %s; Starting fetching keys from master....' % conduit)
 
     try:
         run_timed_query(master_cursor, u'Conduit: %s; master_db: %s; fetch_keys' % (conduit, conduit.master_db), master_query, conduit.major_timeout)
@@ -413,17 +413,30 @@ def execute_conduit(conduit):
         master_connection.close()
         slave_connection.close()
         return
+        
+    #slave_keys = slave_cursor.fetchall()
+    #logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, len(slave_keys)))
+
+    #slave_keys_dict = dict(zip(slave_keys, slave_keys))
+    
+    #EXECUTE KEY FETCH in MASTER
+    logger_ec.debug(u'Conduit: %s; Starting fetching and comparing keys from master and slave....' % conduit)
+
 
     logger_ec.debug(u'Conduit: %s; master_table: %s; master_key_buffersize: %s' % (conduit, conduit.master_table, conduit.master_key_batchsize))
+    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_key_buffersize: %s' % (conduit, conduit.slave_table, conduit.slave_key_batchsize))
 
     try:
-        if conduit.master_key_batchsize:
-            appendlist = [x for x in ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout) if x not in slave_keys_dict]
-        else:
-            master_keys = TimeLimited(master_cursor.fetchall, conduit.major_timeout)()
-            appendlist = [x for x in master_keys if x not in slave_keys_dict]
+    #    if conduit.master_key_batchsize:
+    #        appendlist = [x for x in ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout) if x not in slave_keys_dict]
+    #    else:
+    #        master_keys = TimeLimited(master_cursor.fetchall, conduit.major_timeout)()
+    #        appendlist = [x for x in master_keys if x not in slave_keys_dict]
+
+        appendlist = list(set(fix_encoding(ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout))) - set(fix_encoding(ResultIter(slave_cursor, conduit.slave_key_batchsize, conduit.major_timeout))))
+
     except TimeLimitExpired:
-        logger_ec.error(u'Conduit: %s; Fetching keys from master; Timeout error' % conduit)
+        logger_ec.error(u'Conduit: %s; Fetching keys; Timeout error' % conduit)
         slave_cursor.close()
         master_cursor.close()
         master_connection.close()
@@ -431,6 +444,7 @@ def execute_conduit(conduit):
         return 
 
     logger_ec.debug(u'Conduit: %s; master_table: %s; master_keys: %s' % (conduit, conduit.master_table, master_cursor.rowcount))
+    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, slave_cursor.rowcount))
     logger_ec.info(u'Conduit: %s; Total rows to append: %s' % (conduit, len(appendlist)))
 
     batch_size = conduit.batchsize

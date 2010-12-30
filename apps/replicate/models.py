@@ -83,8 +83,9 @@ class Conduit(models.Model):
     primary_key_source = models.CharField(max_length=1, default='M', choices=PKSRC_CHOICES, verbose_name=_(u'primary key source'), help_text = _(u"Determines which database (master or slave) is going to be queried to determine the primary key."))
     detect_primary_key = models.BooleanField(default=True, help_text=_(u'Only works for MySQL databases so far.'), verbose_name = _(u"detect primary key"))
     key_fields = models.TextField(blank=True, null=True, help_text=_(u'Comma separated list of fields that compose a primary key.'), verbose_name = _(u"key fields"))
-    master_key_batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Size of keys block to fetch from master when comparing master/slave difference (optimization value affected by: network speed/latency, computer memory amount).'), verbose_name = _(u"master key fetch buffer size"))
-    batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Amount of records to append per conduit execution (this value is independant of [master_key_batchsize] value.'), verbose_name=_(u"conduit batchsize"))
+    master_key_batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Size of keys block to fetch from master when comparing master/slave difference (optimization value affected by: network speed/latency, computer memory amount).  Use 0 to disable this feature and fetch all keys in one request.'), verbose_name = _(u"master key fetch buffer size"))
+    slave_key_batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Size of keys block to fetch from slave when comparing master/slave difference (optimization value affected by: network speed/latency, computer memory amount).  Use 0 to disable this feature and fetch all keys in one request.'), verbose_name = _(u"slave key fetch buffer size"))
+    batchsize = models.PositiveIntegerField(default=1000, help_text=_(u'Amount of records to append per conduit execution (this value is independant of [master_key_buffersize] value.'), verbose_name=_(u"conduit batchsize"))
     fields_to_fetch = models.TextField(blank=True, null=True, help_text=_(u'Comma separated list of fields that will be replicated, if not specified all fields will be used.'), verbose_name=_(u"field to fetch"))
     dry_run = models.BooleanField(default=True, help_text=_(u"Don't actually modify any data only log messages"), verbose_name=_(u"dry run"))
     ignore_slave_modify_errors = models.BooleanField(default=False, help_text=_(u'Ignore situations where a single slave append query returns an error (typical of incorrect primary key fields)'), verbose_name=_(u"ignore slave modify error"))
@@ -103,7 +104,7 @@ class Conduit(models.Model):
     
 
     #DELETES
-    #allow_slave_deletes = models.BooleanField(default = False)
+    #allow_slave_deletes = models.BooleanField(default=False, verbose_name=_(u'allow slave deletes'), help_text=_(u'Delete rows on the slave database not found on the master database.')
     
     #UPDATES
     #fields to compare (between master & slave & operation) to determine a update_set

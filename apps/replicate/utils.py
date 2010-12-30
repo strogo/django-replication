@@ -194,7 +194,7 @@ def determine_primary_keys(conduit, master_cursor, slave_cursor):
     #ORACLE - SELECT B.COLUMN_NAME FROM ALL_CONSTRAINS A, ALL_CONS_COLUMNS B WHERE A.CONSTRAINT_NAME=B.CONTRAINT_NAME AND A.TABLE=<> AND A.CONTRAINT_TYPE='P';
     #ORACLE - SELECT * FROM ALL_CONSTRAINTS WHERE CONSTRAINT_TYPE='P' AND TABLE_NAME=<>
     #SQLITE - PRAGMA INDEX_LIST('<>');
-    logger_ec.debug(u"Conduit: %s; slave_db: %s; conduit.detect_primary_key: %s" % (conduit, conduit.slave_db, conduit.detect_primary_key))
+    logger_ec.debug(u"Conduit: %s; conduit.detect_primary_key: %s" % (conduit, conduit.detect_primary_key))
     logger_ec.debug(u"Conduit: %s; conduit.primary_key_source: %s" % (conduit, conduit.get_primary_key_source_display()))
     
     if conduit.primary_key_source == 'M':
@@ -253,17 +253,6 @@ def determine_primary_keys(conduit, master_cursor, slave_cursor):
     #						AND all_constraints.table_name = 'snap$_b1permit'
     #						AND all_constraints.owner = 'SD'
     #			"
-
-                print "QUERY: %s" % query
-                error_msg = u'Conduit: %s; auto_db: %s; detecting_primary_key (oracle)' % (conduit, auto_db)
-                try:
-                    run_timed_query(auto_cursor, error_msg,  query, conduit.minor_timeout)
-                except:
-                    slave_cursor.close()
-                    master_cursor.close()
-                    master_connection.close()
-                    slave_connection.close()
-                    return
                 pk_column_names = [k for k in auto_cursor.fetchall()]				
             """
         else:
@@ -285,31 +274,33 @@ def determine_primary_keys(conduit, master_cursor, slave_cursor):
 def determine_append_list(conduit, master_cursor, slave_cursor, master_query, slave_query):
     #EXECUTE KEY FETCH IN SLAVE
     try:
-        run_timed_query(slave_cursor, u'Conduit: %s; slave_db:%s; fetch_keys' % (conduit, conduit.slave_table), slave_query, conduit.major_timeout)
+        run_timed_query(slave_cursor, u'Conduit: %s; fetch_keys' % (conduit), slave_query, conduit.major_timeout)
     except:
         raise
 
     try:
-        run_timed_query(master_cursor, u'Conduit: %s; master_db: %s; fetch_keys' % (conduit, conduit.master_db), master_query, conduit.major_timeout)
+        run_timed_query(master_cursor, u'Conduit: %s; fetch_keys' % (conduit), master_query, conduit.major_timeout)
     except:
         raise
    
     #EXECUTE KEY FETCH in MASTER
     logger_ec.debug(u'Conduit: %s; Starting fetching and comparing keys from master and slave....' % conduit)
 
-    logger_ec.debug(u'Conduit: %s; master_table: %s; master_key_buffersize: %s' % (conduit, conduit.master_table, conduit.master_key_batchsize))
-    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_key_buffersize: %s' % (conduit, conduit.slave_table, conduit.slave_key_batchsize))
+    logger_ec.debug(u'Conduit: %s; master_key_buffersize: %s' % (conduit, conduit.master_key_batchsize))
+    logger_ec.debug(u'Conduit: %s; slave_key_buffersize: %s' % (conduit, conduit.slave_key_batchsize))
 
     try:
-        return list(set(fix_encoding(ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout))) - set(fix_encoding(ResultIter(slave_cursor, conduit.slave_key_batchsize, conduit.major_timeout))))
+        append_list = list(set(fix_encoding(ResultIter(master_cursor, conduit.master_key_batchsize, conduit.major_timeout))) - set(fix_encoding(ResultIter(slave_cursor, conduit.slave_key_batchsize, conduit.major_timeout))))
 
     except TimeLimitExpired:
         logger_ec.error(u'Conduit: %s; Fetching keys; Timeout error' % conduit)
         raise
 
-    logger_ec.debug(u'Conduit: %s; master_table: %s; master_keys: %s' % (conduit, conduit.master_table, master_cursor.rowcount))
-    logger_ec.debug(u'Conduit: %s; slave_table: %s; slave_keys: %s' % (conduit, conduit.slave_table, slave_cursor.rowcount))
-    logger_ec.info(u'Conduit: %s; Total rows to append: %s' % (conduit, len(appendlist)))
+    logger_ec.debug(u'Conduit: %s; master_keys: %s' % (conduit, master_cursor.rowcount))
+    logger_ec.debug(u'Conduit: %s; slave_keys: %s' % (conduit, slave_cursor.rowcount))
+    logger_ec.info(u'Conduit: %s; Total rows to append: %s' % (conduit, len(append_list)))
+
+    return append_list
 
 
 def assemble_queries(conduit, auto_backend, auto_table, auto_cursor, pk_column_names):
@@ -366,6 +357,64 @@ def assemble_queries(conduit, auto_backend, auto_table, auto_cursor, pk_column_n
     return master_query, slave_query, insert_template, fields_to_fetch, keys_template
 
 
+def insert_rows(conduit, append_list, fields_to_fetch, keys_template, insert_template, master_cursor, slave_cursor):
+    logger_ec.debug(u'Conduit: %s; batch_size: %s' % (conduit, conduit.batchsize))
+    logger_ec.debug(u'Conduit: %s; dry_run: %s' % (conduit, conduit.dry_run))
+    logger_ec.debug(u'Conduit: %s; Starting row fetch...' % (conduit))
+
+    master_warning_counter = slave_warning_counter = row_fetch_count = 0
+
+    #TODO: convert this loop's db query,etc to timelimited
+    for key in append_list[:conduit.batchsize]:
+        #Fetch single row from master
+        try:
+            master_cursor.execute("SELECT %s FROM %s WHERE %s " % (fields_to_fetch, conduit.master_table, (keys_template) % (tuple(key))))
+            #TODO: Implement multi-row fetch w/ cursor.executemany("SELECT ...", keys[])
+        except:
+            (exc_type, exc_info, tb) = sys.exc_info()
+            logger_ec.error(u'Conduit: %s; master_db_fetch_row error; %s' % (conduit, exc_info))
+            return
+        
+        #This is necesary to update rowcount
+        row = master_cursor.fetchall()[0]
+        #TODO: Implement multi-row fetch  w/ cursor.fetchmany(3) or w/ ResultIter
+        if master_cursor.rowcount != 1:
+            #TODO: rowcount != batch_block_size
+            error_msg = 'Single master query returned an unexpected number or rows (0 or more than 1), check your primary keys.'
+            if conduit.ignore_master_pull_errors:
+                logger_ec.warning(u'Conduit: %s; %s' % (conduit, error_msg))
+                master_warning_counter += 1
+                if master_warning_counter > conduit.master_warnings_abort_threshold and conduit.master_warnings_abort_threshold != 0:
+                    error_msg = u'Master warning count threshold has been exceded.'
+                    logger_ec.error(u'Conduit: %s; %s' % (conduit, error_msg))
+                    return
+            else:
+                logger_ec.error(u'Conduit: %s; %s' % (conduit, error_msg))
+                return
+
+        #Insert row into slave
+        try:
+            if not conduit.dry_run:
+                slave_cursor.execute(insert_template, row)
+                #cursor.executemany("INSERT INTO animals (name, species) VALUES (%s, %s)", [  ('Rollo', 'Rat'),  ('Dudley', 'Dolphin'),  ('Mark', 'Marmoset') ])
+                row_fetch_count += 1
+        except: 
+            (exc_type, exc_info, tb) = sys.exc_info()
+            if conduit.ignore_slave_modify_errors:
+                slave_warning_counter += 1
+                logger_ec.warning(u'Conduit: %s; row_insert error; %s' % (conduit, exc_info))
+                if slave_warning_counter > conduit.slave_warnings_abort_threshold and conduit.slave_warnings_abort_threshold != 0:
+                    error_msg = u'Slave warning count threshold has been exceded.'
+                    logger_ec.error(u'Conduit: %s; %s' % (conduit, error_msg))
+                    return
+            else:
+                logger_ec.error(u'Conduit: %s; row_insert error: %s' % (conduit, exc_info))
+                return
+
+    logger_ec.info(u'Conduit: %s; Total rows fetched from master db: %d.' % (conduit, row_fetch_count))
+
+
+
 def execute_conduit(conduit):
     """Execute a single conduit"""
     # rowcount is quirky for ORACLE 9
@@ -400,63 +449,8 @@ def execute_conduit(conduit):
 
         append_list = determine_append_list(conduit, master_cursor, slave_cursor, master_query, slave_query)
         
-        batch_size = conduit.batchsize
-
-        logger_ec.debug(u'Conduit: %s; batch_size: %s' % (conduit, batch_size))
-        logger_ec.debug(u'Conduit: %s; dry_run: %s' % (conduit, conduit.dry_run))
-        logger_ec.debug(u'Conduit: %s; Starting row fetch...' % (conduit))
-
-        master_warning_counter = slave_warning_counter = row_fetch_count = 0
-
-        #TODO: convert this loop's db query,etc to timelimited
-        for key in append_list[:batch_size]:
-            #Fetch single row from master
-            try:
-                master_cursor.execute("SELECT %s FROM %s WHERE %s " % (fields_to_fetch, conduit.master_table, (keys_template) % (tuple(key))))
-                #TODO: Implement multi-row fetch w/ cursor.executemany("SELECT ...", keys[])
-            except:
-                (exc_type, exc_info, tb) = sys.exc_info()
-                logger_ec.error(u'Conduit: %s; master_table: %s; fetch_row: Database error: %s' % (conduit, conduit.master_table, exc_info))
-                return
-            
-            #This is necesary to update rowcount
-            row = master_cursor.fetchall()[0]
-            #TODO: Implement multi-row fetch  w/ cursor.fetchmany(3) or w/ ResultIter
-            if master_cursor.rowcount != 1:
-                #TODO: rowcount != batch_block_size
-                error_msg = 'Single master query returned an unexpected number or rows (0 or more than 1), check your primary keys.'
-                if conduit.ignore_master_pull_errors:
-                    logger_ec.warning(u'master_table: %s; %s' % (conduit.master_table, error_msg))
-                    master_warning_counter += 1
-                    if master_warning_counter > conduit.master_warnings_abort_threshold and conduit.master_warnings_abort_threshold != 0:
-                        error_msg = u'Master warning count threshold has been exceded.'
-                        logger_ec.error(u'Conduit: %s; master_table: %s; %s' % (conduit, conduit.master_table, error_msg))
-                        return
-                else:
-                    logger_ec.error(u'Conduit: %s; master_table: %s; %s' % (conduit, conduit.master_table, error_msg))
-                    return
-
-            #Insert row into slave
-            try:
-                if not conduit.dry_run:
-                    slave_cursor.execute(insert_template, row)
-                    #cursor.executemany("INSERT INTO animals (name, species) VALUES (%s, %s)", [  ('Rollo', 'Rat'),  ('Dudley', 'Dolphin'),  ('Mark', 'Marmoset') ])
-                    row_fetch_count += 1
-            except: 
-                (exc_type, exc_info, tb) = sys.exc_info()
-                if conduit.ignore_slave_modify_errors:
-                    slave_warning_counter += 1
-                    logger_ec.warning(u'Conduit: %s; slave_table: %s; row_insert: Database error: %s' % (conduit, conduit.slave_table, exc_info))
-                    if slave_warning_counter > conduit.slave_warnings_abort_threshold and conduit.slave_warnings_abort_threshold != 0:
-                        error_msg = u'Slave warning count threshold has been exceded.'
-                        logger_ec.error(u'Conduit: %s; slave_table: %s; %s' % (conduit, conduit.slave_table, error_msg))
-                        return
-                else:
-                    logger_ec.error(u'Conduit: %s; slave_table: %s; row_insert: Database error: %s' % (conduit, conduit.slave_table, exc_info))
-                    return
-
-        logger_ec.info(u'Conduit: %s; Total rows fetched from master: %d.' % (conduit, row_fetch_count))
-
+        insert_rows(conduit, append_list, fields_to_fetch, keys_template, insert_template, master_cursor, slave_cursor)
+        
     except:
         (exc_type, exc_info, tb) = sys.exc_info()
         logger_ec.error(u'Conduit: %s; %s.' % (conduit, traceback.format_exception(exc_type, exc_info, None)[0]))
